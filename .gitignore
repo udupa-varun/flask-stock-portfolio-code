@@ -1,1 +1,9 @@
+# venv
 env/
+
+# cache
+*__pycache__
+.pytest_cache
+
+# log files
+*.log
