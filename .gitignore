@@ -5,5 +5,10 @@ env/
 *__pycache__
 .pytest_cache
 
-# log files
-*.log
+# Instance Folder - used for run-time files
+instance/*.cfg
+instance/*.db
+instance/*.log
+instance/*.log*
+
+.coverage

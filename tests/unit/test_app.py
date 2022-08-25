@@ -1,9 +1,10 @@
 """
 This file contains unit tests for app.py
 """
-from pydantic import ValidationError
-from app import StockModel
 import pytest
+from pydantic import ValidationError
+
+from project.stocks.routes import StockModel
 
 
 def test_validate_stock_data_nominal():
