@@ -4,6 +4,29 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask, render_template
 from flask.logging import default_handler
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import MetaData
+
+# ----------------
+# DB Configuration
+# ----------------
+
+# create a naming convention for the database tables
+convention = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+metadata = MetaData(naming_convention=convention)
+
+# create instances of the Flask extensions in global scope,
+# but without arguments passed in.
+# These instances are not attached to the Flask app at this point.
+database = SQLAlchemy(metadata=metadata)
+db_migration = Migrate()
 
 # ----------------------------
 # Application Factory Function
@@ -18,11 +41,24 @@ def create_app() -> Flask:
     config_type = os.getenv("CONFIG_TYPE", default="config.DevelopmentConfig")
     app.config.from_object(config_type)
 
+    initialize_extensions(app)
     register_blueprints(app)
     configure_logging(app)
     register_app_callbacks(app)
     register_error_pages(app)
     return app
+
+
+# ----------------
+# Helper Functions
+# ----------------
+
+
+def initialize_extensions(app):
+    # since the app instance is now created,
+    # pass it to each Flask extension instance to bind them to the app instance
+    database.init_app(app)
+    db_migration.init_app(app, database, render_as_batch=True)
 
 
 def register_blueprints(app: Flask) -> None:

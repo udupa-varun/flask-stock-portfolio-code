@@ -1,4 +1,4 @@
-from flask import flash, render_template
+from flask import abort, flash, render_template
 
 from . import users_blueprint
 
@@ -17,9 +17,6 @@ def about():
     return render_template("users/about.html", company_name="TestDriven.io")
 
 
-# from flask import abort
-
-
-# @users_blueprint.route("/admin")
-# def admin():
-#     abort(403)
+@users_blueprint.route("/admin")
+def admin():
+    abort(403)

@@ -1,3 +1,4 @@
+import click
 from flask import (
     current_app,
     flash,
@@ -9,7 +10,41 @@ from flask import (
 )
 from pydantic import BaseModel, ValidationError, validator
 
+from project import database
+from project.models import Stock
+
 from . import stocks_blueprint
+
+# ------------
+# CLI Commands
+# ------------
+
+
+@stocks_blueprint.cli.command("create_default_set")
+def create_default_set():
+    """
+    Create three new stocks and add them to the database
+    """
+    stock1 = Stock("HD", "25", "247.29")
+    stock2 = Stock("TWTR", "230", "31.89")
+    stock3 = Stock("DIS", "65", "118.77")
+    database.session.add(stock1)
+    database.session.add(stock2)
+    database.session.add(stock3)
+    database.session.commit()
+
+
+@stocks_blueprint.cli.command("create")
+@click.argument("symbol")
+@click.argument("number_of_shares")
+@click.argument("purchase_price")
+def create(symbol, number_of_shares, purchase_price):
+    """
+    Create a new stock and add it to the database
+    """
+    stock = Stock(symbol, number_of_shares, purchase_price)
+    database.session.add(stock)
+    database.session.commit()
 
 
 # -----------------
@@ -78,10 +113,15 @@ def add_stock():
             )
             print(stock_data)
 
-            # save form data to the session object
-            session["stock_symbol"] = stock_data.stock_symbol
-            session["number_of_shares"] = stock_data.number_of_shares
-            session["purchase_price"] = stock_data.purchase_price
+            # save form data to the database
+            new_stock = Stock(
+                stock_data.stock_symbol,
+                stock_data.number_of_shares,
+                stock_data.purchase_price,
+            )
+            database.session.add(new_stock)
+            database.session.commit()
+
             flash(
                 f"Added new stock ({stock_data.stock_symbol})!",
                 category="success",
@@ -99,4 +139,5 @@ def add_stock():
 
 @stocks_blueprint.route("/stocks/")
 def list_stocks():
-    return render_template("stocks/stocks.html")
+    stocks = Stock.query.order_by(Stock.id).all()
+    return render_template("stocks/stocks.html", stocks=stocks)

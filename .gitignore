@@ -12,3 +12,4 @@ instance/*.log
 instance/*.log*
 
 .coverage
+.vscode
