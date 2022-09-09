@@ -4,8 +4,11 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask, render_template
 from flask.logging import default_handler
+from flask_login import LoginManager
+from flask_mail import Mail
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import MetaData
 
 # ----------------
@@ -27,6 +30,10 @@ metadata = MetaData(naming_convention=convention)
 # These instances are not attached to the Flask app at this point.
 database = SQLAlchemy(metadata=metadata)
 db_migration = Migrate()
+csrf_protection = CSRFProtect()
+login = LoginManager()
+login.login_view = "users.login"
+mail = Mail()
 
 # ----------------------------
 # Application Factory Function
@@ -59,6 +66,17 @@ def initialize_extensions(app):
     # pass it to each Flask extension instance to bind them to the app instance
     database.init_app(app)
     db_migration.init_app(app, database, render_as_batch=True)
+    csrf_protection.init_app(app)
+    login.init_app(app)
+
+    # Flask-login configuration
+    from project.models import User
+
+    @login.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
+
+    mail.init_app(app)
 
 
 def register_blueprints(app: Flask) -> None:
