@@ -72,7 +72,29 @@ def new_user():
 
 
 @pytest.fixture(scope="function")
-def confirm_email_default_user(test_client, log_in_default_user):
+def confirm_email_default_user_logged_in(test_client, log_in_default_user):
+    # mark the user as having their email confirmed
+    user = User.query.filter_by(email="user@gmail.com").first()
+    user.email_confirmed = True
+    user.email_confirmed_on = datetime(2020, 7, 8)
+    database.session.add(user)
+    database.session.commit()
+
+    # this is where testing happens
+    yield user
+
+    # mark the user as having email not confirmed (cleanup)
+    user = User.query.filter_by(email="user@gmail.com").first()
+    user.email_confirmed = False
+    user.email_confirmed_on = None
+    database.session.add(user)
+    database.session.commit()
+
+
+@pytest.fixture(scope="function")
+def confirm_email_default_user_not_logged_in(
+    test_client, register_default_user
+):
     # mark the user as having their email confirmed
     user = User.query.filter_by(email="user@gmail.com").first()
     user.email_confirmed = True

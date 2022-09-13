@@ -147,6 +147,14 @@ def login():
                     f"Logged in user: {current_user.email}"
                 )
 
+                # if the user email has not been confirmed, flash a reminder
+                if not user.email_confirmed:
+                    flash(
+                        "Email address not confirmed. Please check your email to confirm your email address, or use the link below to resend the email confirmation link.",
+                        "warning",
+                    )
+                    return redirect(url_for("users.user_profile"))
+
                 # if the next URL is not specified, redirect to the user profile
                 if not request.args.get("next"):
                     return redirect(url_for("users.user_profile"))

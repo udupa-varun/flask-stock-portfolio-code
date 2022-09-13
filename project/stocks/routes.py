@@ -8,6 +8,8 @@ from flask import (
     session,
     url_for,
 )
+from flask_login import current_user, login_required
+from functools import wraps
 from pydantic import BaseModel, ValidationError, validator
 
 from project import database
@@ -89,6 +91,20 @@ class StockModel(BaseModel):
         return value.upper()
 
 
+def email_confirmation_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.email_confirmed:
+            flash(
+                "Email address not confirmed. Please check your email to confirm your email address, or use the link below to resend the email confirmation link.",
+                "warning",
+            )
+            return redirect(url_for("users.user_profile"))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 # ------
 # Routes
 # ------
@@ -99,6 +115,8 @@ def index():
 
 
 @stocks_blueprint.route("/add_stock", methods=["GET", "POST"])
+@login_required
+@email_confirmation_required
 def add_stock():
     if request.method == "POST":
         # print form data to console
@@ -138,6 +156,8 @@ def add_stock():
 
 
 @stocks_blueprint.route("/stocks/")
+@login_required
+@email_confirmation_required
 def list_stocks():
     stocks = Stock.query.order_by(Stock.id).all()
     return render_template("stocks/stocks.html", stocks=stocks)

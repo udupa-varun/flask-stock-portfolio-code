@@ -110,9 +110,12 @@ def test_get_login_page(test_client):
     assert b"Forgot your password?" in response.data
 
 
-def test_valid_login_and_logout(test_client, register_default_user):
+def test_valid_login_and_logout(
+    test_client, confirm_email_default_user_not_logged_in
+):
     """
     GIVEN a Flask application configured for testing
+        and the user email has been confirmed
     WHEN the '/users/login' page is posted to (POST) with valid credentials
     THEN check if response is valid
     """
@@ -125,6 +128,43 @@ def test_valid_login_and_logout(test_client, register_default_user):
         follow_redirects=True,
     )
     assert response.status_code == 200
+    assert b"Thanks for logging in, user@gmail.com!" in response.data
+    assert b"Flask Stock Portfolio App" in response.data
+    assert b"Please log in to access this page." not in response.data
+
+    """
+    GIVEN a Flask application configured for testing
+    WHEN the 'users/logout' page is requested (GET) for a logged in user
+    THEN check if response is valid
+    """
+    response = test_client.get("/users/logout", follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Goodbye!" in response.data
+    assert b"Flask Stock Portfolio App" in response.data
+    assert b"Please log in to access this page." not in response.data
+
+
+def test_valid_login_not_confirmed_logout(test_client, register_default_user):
+    """
+    GIVEN a Flask application configured for testing
+        and the user email has NOT been confirmed
+    WHEN the '/users/login' page is posted to (POST) with valid credentials
+    THEN check if response is valid
+        and warning message is displayed to the user
+    """
+    response = test_client.post(
+        "/users/login",
+        data={
+            "email": "user@gmail.com",
+            "password": "FlaskIsAwesome123",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert (
+        b"Email address not confirmed. Please check your email to confirm your email address, or use the link below to resend the email confirmation link."
+        in response.data
+    )
     assert b"Thanks for logging in, user@gmail.com!" in response.data
     assert b"Flask Stock Portfolio App" in response.data
     assert b"Please log in to access this page." not in response.data
@@ -224,7 +264,7 @@ def test_user_profile_logged_in(test_client, log_in_default_user):
 
 
 def test_user_profile_logged_in_email_confirmed(
-    test_client, confirm_email_default_user
+    test_client, confirm_email_default_user_logged_in
 ):
     """
     GIVEN a Flask application configured for testing and default user is logged in
@@ -320,7 +360,9 @@ def test_login_with_next_valid_path(test_client, register_default_user):
     test_client.get("/users/logout", follow_redirects=True)
 
 
-def test_login_with_next_invalid_path(test_client, register_default_user):
+def test_login_with_next_invalid_path(
+    test_client, confirm_email_default_user_not_logged_in
+):
     """
     GIVEN a Flask application configured for testing
     WHEN the '/users/login?next=http://www.badsite.com' page is posted to (POST) with a valid user login
@@ -425,7 +467,7 @@ def test_get_password_reset_via_email_page(test_client):
 
 
 def test_post_password_reset_via_email_valid(
-    test_client, confirm_email_default_user
+    test_client, confirm_email_default_user_logged_in
 ):
     """
     GIVEN a Flask application configured for testing
