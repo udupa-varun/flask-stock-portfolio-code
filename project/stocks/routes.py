@@ -1,3 +1,4 @@
+from datetime import datetime
 import click
 from flask import (
     current_app,
@@ -136,6 +137,8 @@ def add_stock():
                 stock_data.stock_symbol,
                 stock_data.number_of_shares,
                 stock_data.purchase_price,
+                current_user.id,
+                datetime.fromisoformat(request.form["purchase_date"]),
             )
             database.session.add(new_stock)
             database.session.commit()
@@ -159,5 +162,7 @@ def add_stock():
 @login_required
 @email_confirmation_required
 def list_stocks():
-    stocks = Stock.query.order_by(Stock.id).all()
+    stocks = (
+        Stock.query.order_by(Stock.id).filter_by(user_id=current_user.id).all()
+    )
     return render_template("stocks/stocks.html", stocks=stocks)

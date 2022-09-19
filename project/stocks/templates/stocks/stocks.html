@@ -16,6 +16,7 @@
                     <th>Stock Symbol</th>
                     <th>Number of Shares</th>
                     <th>Purchase Price</th>
+                    <th>Purchase Date</th>
                 </tr>
             </thead>
 
@@ -25,6 +26,7 @@
                 <td>{{ stock.stock_symbol }}</td>
                 <td>{{ stock.number_of_shares }}</td>
                 <td>${{ stock.purchase_price / 100 }}</td>
+                <td>{{ stock.purchase_date.strftime("%Y-%m-%d") }}</td>
             </tr>
             {% endfor %}
         </table>

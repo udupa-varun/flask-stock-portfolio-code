@@ -21,6 +21,7 @@ class User(database.Model):
     """
 
     __tablename__ = "users"
+
     id = database.Column(database.Integer, primary_key="True")
     email = database.Column(database.String, unique=True)
     password_hashed = database.Column(database.String(128))
@@ -37,6 +38,7 @@ class User(database.Model):
         # self.email_confirmation_sent_on = datetime.now()
         # self.email_confirmed = False
         # self.email_confirmed_on = None
+        stocks = database.relationship("Stock", backref="user", lazy="dynamic")
 
     def is_password_correct(self, password_plaintext: str):
         return check_password_hash(self.password_hashed, password_plaintext)
@@ -97,13 +99,24 @@ class Stock(database.Model):
     stock_symbol = database.Column(database.String, nullable=False)
     number_of_shares = database.Column(database.Integer, nullable=False)
     purchase_price = database.Column(database.Integer, nullable=False)
+    user_id = database.Column(
+        database.Integer, database.ForeignKey("users.id")
+    )
+    purchase_date = database.Column(database.DateTime)
 
     def __init__(
-        self, stock_symbol: str, number_of_shares: int, purchase_price: int
+        self,
+        stock_symbol: str,
+        number_of_shares: int,
+        purchase_price: str,
+        user_id: int,
+        purchase_date: datetime = None,
     ) -> None:
         self.stock_symbol = stock_symbol
         self.number_of_shares = int(number_of_shares)
         self.purchase_price = int(float(purchase_price) * 100)
+        self.user_id = user_id
+        self.purchase_date = purchase_date
 
     def __repr__(self) -> str:
         return f"{self.stock_symbol} - {self.number_of_shares} shares purchased at ${self.purchase_price / 100}"

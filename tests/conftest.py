@@ -9,7 +9,7 @@ from project.models import Stock, User
 
 @pytest.fixture(scope="module")
 def new_stock():
-    stock = Stock("AAPL", "16", "406.78")
+    stock = Stock("AAPL", "16", "406.78", 17, datetime(2020, 7, 18))
     return stock
 
 
@@ -137,3 +137,38 @@ def afterwards_reset_default_user_email():
     user.set_email("user@gmail.com")
     database.session.add(user)
     database.session.commit()
+
+
+@pytest.fixture(scope="function")
+def add_stocks_for_default_user(
+    test_client, confirm_email_default_user_logged_in
+):
+    # Add three stocks for the default user
+    test_client.post(
+        "/add_stock",
+        data={
+            "stock_symbol": "SAM",
+            "number_of_shares": "27",
+            "purchase_price": "301.23",
+            "purchase_date": "2020-07-01",
+        },
+    )
+    test_client.post(
+        "/add_stock",
+        data={
+            "stock_symbol": "COST",
+            "number_of_shares": "76",
+            "purchase_price": "14.67",
+            "purchase_date": "2019-05-26",
+        },
+    )
+    test_client.post(
+        "/add_stock",
+        data={
+            "stock_symbol": "TWTR",
+            "number_of_shares": "146",
+            "purchase_price": "34.56",
+            "purchase_date": "2020-02-03",
+        },
+    )
+    return
