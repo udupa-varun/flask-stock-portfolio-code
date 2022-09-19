@@ -1,3 +1,4 @@
+from datetime import datetime
 from threading import Thread
 from urllib.parse import urlparse
 
@@ -14,30 +15,28 @@ from flask import (
 )
 from flask_login import (
     current_user,
+    fresh_login_required,
     login_required,
     login_user,
     logout_user,
-    fresh_login_required,
 )
 from flask_mail import Message
+from itsdangerous import URLSafeTimedSerializer
+from itsdangerous.exc import BadSignature
 from sqlalchemy.exc import IntegrityError
 
 from project import database, mail
 from project.models import User
 from project.users.forms import (
-    LoginForm,
-    RegistrationForm,
-    EmailForm,
-    PasswordForm,
-    ChangePasswordForm,
     ChangeEmailForm,
+    ChangePasswordForm,
+    EmailForm,
+    LoginForm,
+    PasswordForm,
+    RegistrationForm,
 )
 
 from . import users_blueprint
-
-from itsdangerous import URLSafeTimedSerializer
-from itsdangerous.exc import BadSignature
-from datetime import datetime
 
 # ----------------
 # Helper Functions

@@ -1,4 +1,6 @@
 from datetime import datetime
+from functools import wraps
+
 import click
 from flask import (
     current_app,
@@ -10,7 +12,6 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from functools import wraps
 from pydantic import BaseModel, ValidationError, validator
 
 from project import database

@@ -1,8 +1,58 @@
 from datetime import datetime
 
+import requests
+from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from project import database
+
+
+def create_alpha_vantage_url_daily_compact(symbol: str) -> str:
+    return (
+        f"https://alphavantage.co/query?function={'TIME_SERIES_DAILY'}"
+        f"&symbol={symbol}&outputsize={'compact'}"
+        f"&apikey={current_app.config['ALPHA_VANTAGE_API_KEY']}"
+    )
+
+
+def get_current_stock_price(symbol: str) -> float:
+    current_price = 0.0
+    url = create_alpha_vantage_url_daily_compact(symbol)
+
+    # attempt the GET call to Alpha Vantage
+    # check that a ConnectionError does not occur (network issue)
+    try:
+        r = requests.get(url)
+    except requests.exceptions.ConnectionError:
+        current_app.logger.warning(
+            f"Error! Network problem preventing retrieving the stock data ({symbol})!"
+        )
+
+    if r.status_code != 200:
+        current_app.logger.warning(
+            f"Error! Received unexpected status code ({r.status_code}) "
+            f"when retrieving daily stock data ({symbol})!"
+        )
+        return current_price
+
+    daily_data = r.json()
+
+    # check for the Time Series (Daily) key, required for processing data
+    # typically missing if the API rate limit has been exceeded.
+    if "Time Series (Daily)" not in daily_data:
+        current_app.logger.warning(
+            f"Could not find the Time Series (Daily) key"
+            f"when retrieving the daily stock data ({symbol})!"
+        )
+        return current_price
+
+    for element in daily_data["Time Series (Daily)"]:
+        current_price = float(
+            daily_data["Time Series (Daily)"][element]["4. close"]
+        )
+        break
+
+    return current_price
 
 
 class User(database.Model):
@@ -86,6 +136,11 @@ class Stock(database.Model):
         stock_symbol: str
         number_of_shares: integer
         purchase_price: integer
+        user_id (primary key of user that owns the stock): int
+        purchase_date: datetime
+        current_price: integet
+        current_price_date (date when current price was retrieved from API): datetime
+        position_value (current price * number of shares): int
 
     Note: due to a limitation in data types supported by SQLite,
     the purchase price is stored as an integer
@@ -103,6 +158,9 @@ class Stock(database.Model):
         database.Integer, database.ForeignKey("users.id")
     )
     purchase_date = database.Column(database.DateTime)
+    current_price = database.Column(database.Integer)
+    current_price_date = database.Column(database.DateTime)
+    position_value = database.Column(database.Integer)
 
     def __init__(
         self,
@@ -117,6 +175,29 @@ class Stock(database.Model):
         self.purchase_price = int(float(purchase_price) * 100)
         self.user_id = user_id
         self.purchase_date = purchase_date
+        self.current_price = 0
+        self.current_price_date = None
+        self.position_value = 0
 
     def __repr__(self) -> str:
         return f"{self.stock_symbol} - {self.number_of_shares} shares purchased at ${self.purchase_price / 100}"
+
+    def get_stock_data(self) -> None:
+        if (
+            self.current_price_date is None
+            or self.current_price_date.date != datetime.now().date()
+        ):
+            current_price = get_current_stock_price(self.stock_symbol)
+            if current_price > 0.0:
+                self.current_price = int(current_price * 100)
+                self.current_price_date = datetime.now()
+                self.position_value = (
+                    self.current_price * self.number_of_shares
+                )
+                current_app.logger.debug(
+                    f"Retrieved current price {self.current_price / 100} "
+                    f"for the stock data ({self.stock_symbol})!"
+                )
+
+    def get_stock_position_value(self) -> float:
+        return float(self.position_value / 100)

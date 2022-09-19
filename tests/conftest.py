@@ -1,16 +1,100 @@
+from datetime import datetime
+
 import flask
 import pytest
-
-from datetime import datetime
+import requests
 
 from project import create_app, database
 from project.models import Stock, User
 
+# --------------
+# Helper Classes
+# --------------
 
-@pytest.fixture(scope="module")
+
+class MockSuccessResponseDaily(object):
+    def __init__(self, url) -> None:
+        self.status_code = 200
+        self.url = url
+        self.headers = {"blaa": "1234"}
+
+    def json(self) -> dict:
+        return {
+            "Meta Data": {
+                "2. Symbol": "AAPL",
+                "3. Last Refreshed": "2022-09-15",
+            },
+            "Time Series (Daily)": {
+                "2022-09-15": {"4. close": "148.3400"},
+                "2022-09-14": {"4. close": "135.9800"},
+            },
+        }
+
+
+class MockApiRateLimitExceededResponse(object):
+    def __init__(self, url) -> None:
+        self.status_code = 200
+        self.url = url
+        self.headers = {"blaa": "1234"}
+
+    def json(self) -> dict:
+        return {
+            "Note": "Thank you for using Alpha Vantage! Our standard API call frequency is "
+            + "5 calls per minute and 500 calls per day"
+        }
+
+
+class MockFailedResponse(object):
+    def __init__(self, url) -> None:
+        self.status_code = 404
+        self.url = url
+        self.headers = {"blaa": "1234"}
+
+    def json(self) -> dict:
+        return {"error": "bad"}
+
+
+@pytest.fixture(scope="function")
+def mock_requests_get_success_daily(monkeypatch):
+    # Create a mock for the requests.get() call
+    # to prevent making the actual API call
+    def mock_get(url):
+        return MockSuccessResponseDaily(url)
+
+    url = "https://alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=MSFT&apikey=demo"
+    monkeypatch.setattr(requests, "get", mock_get)
+
+
+@pytest.fixture(scope="function")
+def mock_requests_get_api_rate_limit_exceeded(monkeypatch):
+    def mock_get(url):
+        return MockApiRateLimitExceededResponse(url)
+
+    url = "https://alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=MSFT&apikey=demo"
+    monkeypatch.setattr(requests, "get", mock_get)
+
+
+@pytest.fixture(scope="function")
+def mock_requests_get_failure(monkeypatch):
+    def mock_get(url):
+        return MockFailedResponse(url)
+
+    url = "https://alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=MSFT&apikey=demo"
+    monkeypatch.setattr(requests, "get", mock_get)
+
+
+@pytest.fixture(scope="function")
 def new_stock():
-    stock = Stock("AAPL", "16", "406.78", 17, datetime(2020, 7, 18))
-    return stock
+    flask_app = create_app()
+    flask_app.config.from_object("config.TestingConfig")
+    flask_app.extensions["mail"].suppress = True
+
+    # create a test client using the Flask app configured for testing
+    with flask_app.test_client() as testing_client:
+        # establish an application context before accessing logger and database
+        with flask_app.app_context():
+            stock = Stock("AAPL", "16", "406.78", 17, datetime(2020, 7, 18))
+            yield stock
 
 
 @pytest.fixture(scope="module")
