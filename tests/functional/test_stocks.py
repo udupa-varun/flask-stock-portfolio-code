@@ -130,7 +130,9 @@ def test_get_add_stock_page_not_logged_in(test_client):
 
 
 def test_post_add_stock_page_logged_in_confirmed(
-    test_client, confirm_email_default_user_logged_in
+    test_client,
+    confirm_email_default_user_logged_in,
+    mock_requests_get_success_daily,
 ):
     """
     GIVEN a Flask application configured for testing
@@ -159,7 +161,9 @@ def test_post_add_stock_page_logged_in_confirmed(
 
 
 def test_post_add_stock_page_logged_in_not_confirmed(
-    test_client, log_in_default_user
+    test_client,
+    log_in_default_user,
+    mock_requests_get_success_daily,
 ):
     """
     GIVEN a Flask application configured for testing
@@ -206,7 +210,9 @@ def test_post_add_stock_page_not_logged_in(test_client):
 
 
 def test_get_stock_list_logged_in_confirmed(
-    test_client, add_stocks_for_default_user
+    test_client,
+    add_stocks_for_default_user,
+    mock_requests_get_success_daily,
 ):
     """
     GIVEN a Flask application configured for testing
@@ -220,6 +226,9 @@ def test_get_stock_list_logged_in_confirmed(
         b"Number of Shares",
         b"Purchase Price",
         b"Purchase Date",
+        b"Current Share Price",
+        b"Stock Position Value",
+        b"TOTAL VALUE",
     ]
     data = [
         b"SAM",
@@ -246,7 +255,7 @@ def test_get_stock_list_logged_in_confirmed(
 
 
 def test_get_stock_list_logged_in_not_confirmed(
-    test_client, log_in_default_user
+    test_client, log_in_default_user, mock_requests_get_success_daily
 ):
     """
     GIVEN a Flask application configured for testing
@@ -259,6 +268,9 @@ def test_get_stock_list_logged_in_not_confirmed(
         b"Number of Shares",
         b"Purchase Price",
         b"Purchase Date",
+        b"Current Share Price",
+        b"Stock Position Value",
+        b"TOTAL VALUE",
     ]
     response = test_client.get("/stocks", follow_redirects=True)
     assert response.status_code == 200
@@ -270,9 +282,7 @@ def test_get_stock_list_logged_in_not_confirmed(
     assert b"Email address has not been confirmed!" in response.data
 
 
-def test_get_stock_list_not_logged_in(
-    test_client,
-):
+def test_get_stock_list_not_logged_in(test_client):
     """
     GIVEN a Flask application configured for testing
         and user is NOT logged in
@@ -324,3 +334,66 @@ def test_monkeypatch_get_failure(monkeypatch):
     assert r.status_code == 404
     assert r.url == url
     assert "bad" in r.json()["error"]
+
+
+def test_get_stock_detail_page(
+    test_client, add_stocks_for_default_user, mock_requests_get_success_weekly
+):
+    """
+    GIVEN a Flask application configured for testing
+        with the default user signed in (confirmed)
+        and the default set of stocks in the database
+        and a monkeypatched version of requests.get()
+    WHEN the '/stocks/3' page is requested (GET) and the response from Alpha Vantage was successful
+    THEN check that the response is valid including a chart
+    """
+    response = test_client.get("/stocks/3", follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Stock Details" in response.data
+    assert b"canvas id='stockChart'" in response.data
+
+
+def test_get_stock_detail_page_failed_response(
+    test_client, add_stocks_for_default_user, mock_requests_get_failure
+):
+    """
+    GIVEN a Flask application configured for testing
+        with the default user signed in (confirmed)
+        and the default set of stocks in the database
+        and a monkeypatched version of requests.get()
+    WHEN the '/stocks/3' page is requested (GET) and the response from Alpha Vantage failed
+    THEN check that the response is valid but the chart is not displayed
+    """
+    response = test_client.get("/stocks/3", follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Stock Details" in response.data
+    assert b"canvas id='stockChart'" not in response.data
+
+
+def test_get_stock_detail_page_incorrect_user(
+    test_client, confirm_email_second_user_logged_in
+):
+    """
+    GIVEN a Flask application configured for testing
+        with the second user signed in (confirmed)
+    WHEN the '/stocks/3' page is requested (GET) by the incorrect user
+    THEN check that a 403 error is returned
+    """
+    response = test_client.get("/stocks/3", follow_redirects=True)
+    assert response.status_code == 403
+    assert b"Stock Details" not in response.data
+    assert b"canvas id='stockChart'" not in response.data
+
+
+def test_get_stock_detail_page_invalid_stock(
+    test_client, confirm_email_default_user_logged_in
+):
+    """
+    GIVEN a Flask application configured for testing
+        with the default user signed in (confirmed)
+    WHEN the '/stocks/234' page is requested (GET)
+    THEN check that a 404 error is returned
+    """
+    response = test_client.get("/stocks/234")
+    assert response.status_code == 404
+    assert b"Stock Details" not in response.data

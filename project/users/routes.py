@@ -43,11 +43,6 @@ from . import users_blueprint
 # ----------------
 
 
-@users_blueprint.errorhandler(403)
-def page_forbidden(e):
-    return render_template("users/403.html"), 403
-
-
 def generate_confirmation_email(user_email):
     confirm_serializer = URLSafeTimedSerializer(
         current_app.config["SECRET_KEY"]

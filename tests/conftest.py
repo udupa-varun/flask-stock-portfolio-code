@@ -12,6 +12,26 @@ from project.models import Stock, User
 # --------------
 
 
+class MockSuccessResponseWeekly(object):
+    def __init__(self, url: str) -> None:
+        self.status_code = 200
+        self.url = url
+
+    def json(self) -> dict:
+        return {
+            "Meta Data": {
+                "2. Symbol": "AAPL",
+                "3. Last Refreshed": "2022-09-20",
+            },
+            "Weekly Adjusted Time Series": {
+                "2022-09-16": {"4. close": "379.2400"},
+                "2022-09-09": {"4. close": "362.7600"},
+                "2022-09-02": {"4. close": "354.3400"},
+                "2022-05-06": {"4. close": "432.9800"},
+            },
+        }
+
+
 class MockSuccessResponseDaily(object):
     def __init__(self, url) -> None:
         self.status_code = 200
@@ -55,6 +75,17 @@ class MockFailedResponse(object):
 
 
 @pytest.fixture(scope="function")
+def mock_requests_get_success_weekly(monkeypatch):
+    # Create a mock for the requests.get() call
+    # to prevent making the actual API call
+    def mock_get(url):
+        return MockSuccessResponseWeekly(url)
+
+    url = "https://alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=MSFT&apikey=demo"
+    monkeypatch.setattr(requests, "get", mock_get)
+
+
+@pytest.fixture(scope="function")
 def mock_requests_get_success_daily(monkeypatch):
     # Create a mock for the requests.get() call
     # to prevent making the actual API call
@@ -93,7 +124,7 @@ def new_stock():
     with flask_app.test_client() as testing_client:
         # establish an application context before accessing logger and database
         with flask_app.app_context():
-            stock = Stock("AAPL", "16", "406.78", 17, datetime(2020, 7, 18))
+            stock = Stock("AAPL", "16", "406.78", 17, datetime(2022, 7, 18))
             yield stock
 
 
@@ -160,7 +191,7 @@ def confirm_email_default_user_logged_in(test_client, log_in_default_user):
     # mark the user as having their email confirmed
     user = User.query.filter_by(email="user@gmail.com").first()
     user.email_confirmed = True
-    user.email_confirmed_on = datetime(2020, 7, 8)
+    user.email_confirmed_on = datetime(2022, 7, 8)
     database.session.add(user)
     database.session.commit()
 
@@ -182,7 +213,7 @@ def confirm_email_default_user_not_logged_in(
     # mark the user as having their email confirmed
     user = User.query.filter_by(email="user@gmail.com").first()
     user.email_confirmed = True
-    user.email_confirmed_on = datetime(2020, 7, 8)
+    user.email_confirmed_on = datetime(2022, 7, 8)
     database.session.add(user)
     database.session.commit()
 
@@ -256,3 +287,69 @@ def add_stocks_for_default_user(
         },
     )
     return
+
+
+@pytest.fixture(scope="module")
+def register_second_user(test_client):
+    """
+    Registers the second user using the '/users/register' route.
+    """
+    test_client.post(
+        "/users/register",
+        data={"email": "user@zmail.com", "password": "FlaskIsTheBest789"},
+    )
+
+
+@pytest.fixture(scope="function")
+def log_in_second_user(test_client, register_second_user):
+    # log in
+    test_client.post(
+        "/users/login",
+        data={"email": "user@zmail.com", "password": "FlaskIsTheBest789"},
+    )
+
+    # this is where testing happens
+    yield
+
+    # log out the user
+    test_client.get("/users/logout", follow_redirects=True)
+
+
+@pytest.fixture(scope="function")
+def confirm_email_second_user_logged_in(test_client, log_in_second_user):
+    # mark the user as having their email confirmed
+    user = User.query.filter_by(email="user@zmail.com").first()
+    user.email_confirmed = True
+    user.email_confirmed_on = datetime(2022, 7, 8)
+    database.session.add(user)
+    database.session.commit()
+
+    # this is where testing happens
+    yield user
+
+    # mark the user as having email not confirmed (cleanup)
+    user = User.query.filter_by(email="user@gmail.com").first()
+    user.email_confirmed = False
+    user.email_confirmed_on = None
+    database.session.add(user)
+    database.session.commit()
+
+
+# @pytest.fixture(scope="function")
+# def confirm_email_second_user_not_logged_in(test_client, register_second_user):
+#     # mark the user as having their email confirmed
+#     user = User.query.filter_by(email="user@zmail.com").first()
+#     user.email_confirmed = True
+#     user.email_confirmed_on = datetime(2022, 7, 8)
+#     database.session.add(user)
+#     database.session.commit()
+
+#     # this is where testing happens
+#     yield user
+
+#     # mark the user as having email not confirmed (cleanup)
+#     user = User.query.filter_by(email="user@gmail.com").first()
+#     user.email_confirmed = False
+#     user.email_confirmed_on = None
+#     database.session.add(user)
+#     database.session.commit()

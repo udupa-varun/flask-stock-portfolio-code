@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 from flask import current_app
@@ -27,6 +27,7 @@ def get_current_stock_price(symbol: str) -> float:
         current_app.logger.warning(
             f"Error! Network problem preventing retrieving the stock data ({symbol})!"
         )
+        return current_price
 
     if r.status_code != 200:
         current_app.logger.warning(
@@ -201,3 +202,66 @@ class Stock(database.Model):
 
     def get_stock_position_value(self) -> float:
         return float(self.position_value / 100)
+
+    def create_alpha_vantage_url_weekly(self) -> str:
+        return (
+            f"https://alphavantage.co/query?function={'TIME_SERIES_WEEKLY_ADJUSTED'}"
+            f"&symbol={self.stock_symbol}&outputsize={'compact'}"
+            f"&apikey={current_app.config['ALPHA_VANTAGE_API_KEY']}"
+        )
+
+    def get_weekly_stock_data(self) -> tuple:
+        title = "Stock chart is unavailable."
+        labels = []
+        values = []
+        url = self.create_alpha_vantage_url_weekly()
+
+        try:
+            r = requests.get(url)
+        except requests.exceptions.ConnectionError:
+            current_app.logger.info(
+                f"Error! Network problem preventing retrieving the weekly stock data ({self.stock_symbol})!"
+            )
+
+        # status code must be 200 (OK) to process stock data
+        if r.status_code != 200:
+            current_app.logger.warning(
+                f"Error! Received unexpected status code ({r.status_code}) "
+                f"when retrieving the weekly stock data ({self.stock_symbol})!"
+            )
+            return title, "", ""
+
+        weekly_data = r.json()
+        # check for required key "Weekly Adjusted Time Series"
+        # typically not present if API rate limit has been exceeded.
+        if "Weekly Adjusted Time Series" not in weekly_data:
+            current_app.logger.warning(
+                f"Could not find the Weekly Adjusted Time Series key "
+                f"when retrieving the weekly stock data ({self.stock_symbol})!"
+            )
+            return title, "", ""
+
+        title = f"Weekly Prices ({self.stock_symbol})"
+
+        # determine start date, either
+        #   - date from 12 weeks ago if start date is less than 12 weeks ago
+        #   - otherwise use purchase date
+        start_date = self.purchase_date
+        if (datetime.now() - start_date) < timedelta(weeks=12):
+            start_date = datetime.now() - timedelta(weeks=12)
+
+        for element in weekly_data["Weekly Adjusted Time Series"]:
+            date = datetime.fromisoformat(element)
+            if date.date() > start_date.date():
+                labels.append(date)
+                values.append(
+                    weekly_data["Weekly Adjusted Time Series"][element][
+                        "4. close"
+                    ]
+                )
+
+        # reverse the element order as data from API is read in latest to oldest
+        labels.reverse()
+        values.reverse()
+
+        return title, labels, values

@@ -280,9 +280,7 @@ def test_user_profile_logged_in_email_confirmed(
     assert b"Account Statistics" in response.data
     assert b"Joined on" in response.data
     assert b"Email address has not been confirmed!" not in response.data
-    assert (
-        b"Email address confirmed on Wednesday, July 08, 2020" in response.data
-    )
+    assert b"Email address confirmed on Friday, July 08, 2022" in response.data
     assert b"Account Actions" in response.data
     assert b"Change Password" in response.data
     assert b"Resend Email Confirmation" not in response.data
