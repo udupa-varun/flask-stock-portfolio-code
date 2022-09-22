@@ -2,9 +2,9 @@
     .SYNOPSIS
         Sets up the venv.
     .DESCRIPTION
-        Powershell script to setup/update the venv. Assumes the right version of Python is available.
+        Powershell script to setup/update the venv on Windows. Assumes the right version of Python is available.
     .EXAMPLE
-        C:\PDXData\pdx_libraries>.\setup-win.ps1
+        C:\code\python\tddio\flask-stock-portfolio-code>.\setup-win.ps1
     .NOTES
         Author: Varun Udupa
         Date:   Aug 29, 2022
@@ -66,5 +66,3 @@ $PDX_PYTHONPATH = Resolve-Path($VENV_PATH, "Scripts", "python.exe" -join "\")
 # reset location
 Set-Location $INVOKE_DIR
 Write-Output "Setup is complete."
-Write-Output "Remember to point PDX Deploy to use $PDX_PYTHONPATH, if applicable."
-
