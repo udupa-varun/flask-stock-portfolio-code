@@ -14,7 +14,7 @@ class Config(object):
     # so update the URI to use 'postgres://' instead
     if os.getenv("DATABASE_URL"):
         SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL").replace(
-            "postgres://", "postgresql://"
+            "postgres://", "postgresql://", 1
         )
     else:
         SQLALCHEMY_DATABASE_URI = (
@@ -35,6 +35,9 @@ class Config(object):
 
     # Alpha Vantage API Key
     ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", default="demo")
+
+    # Logging
+    LOG_TO_STDOUT = os.getenv("LOG_TO_STDOUT", default=False)
 
 
 class ProductionConfig(Config):
