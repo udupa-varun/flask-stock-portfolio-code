@@ -50,7 +50,6 @@ class ProductionConfig(Config):
     MAIL_USE_SSL = False
     MAIL_USERNAME = "apikey"
     MAIL_PASSWORD = os.getenv("SENDGRID_API_KEY", default="")
-    MAIL_DEFAULT_SENDER = "apikey"
 
 
 class DevelopmentConfig(Config):
