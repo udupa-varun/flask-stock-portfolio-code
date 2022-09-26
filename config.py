@@ -43,6 +43,14 @@ class Config(object):
 class ProductionConfig(Config):
     FLASK_ENV = "production"
 
+    # Flask-Mail config - SendGrid
+    MAIL_SERVER = "smtp.sendgrid.net"
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USE_SSL = False
+    MAIL_USERNAME = "apikey"
+    MAIL_PASSWORD = os.getenv("SENDGRID_API_KEY", default="")
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
